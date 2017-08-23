@@ -421,7 +421,6 @@ sub Build($)
 
    my $tool_attributes = {
       ant => [
-         "-silent",
          "-Ddebug=$CFG{BUILD_DEBUG_FLAG}",
          "-Dis-production=$CFG{BUILD_PROD_FLAG}",
          "-Dzimbra.buildinfo.platform=$CFG{BUILD_OS}",
