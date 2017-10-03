@@ -157,6 +157,11 @@ loadConfig() {
   echo ""
   echo -n "Loading configuration data from $FILE..."
   source "$FILE"
+  checkExistingInstall
+  if [ $INSTALLED = "yes" ]; then
+    UPGRADE="yes"
+    export $UPGRADE
+  fi
   echo "done"
 }
 
