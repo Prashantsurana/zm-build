@@ -50,7 +50,7 @@ echo -----------------------------------
 echo System Cleanup
 echo -----------------------------------
 
-(
+cleanUp() {
  set +e;
  sudo killall master zmstat-fd
  sudo killall -u zimbra
@@ -65,7 +65,7 @@ echo -----------------------------------
  sudo apt-get remove --purge -y zimbra-*
  sudo rm -rf /opt/zimbra
  echo
-)
+}
 
 echo -----------------------------------
 echo Build Cleanup
