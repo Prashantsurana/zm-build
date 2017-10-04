@@ -66,7 +66,7 @@ cleanUp() {
  sudo rm -rf /opt/zimbra
  echo
 }
-
+cleanup
 echo -----------------------------------
 echo Build Cleanup
 echo -----------------------------------
