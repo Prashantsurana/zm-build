@@ -70,6 +70,7 @@ references:
    deploy_ec2_upgrade_job_steps: &deploy_ec2_upgrade_job_steps
       steps:
          - checkout
+         - run:
             name: Preparing OS
             command: .circleci/jobs/${CIRCLE_JOB/@?*/}/prepare-box.sh
          - attach_workspace:
