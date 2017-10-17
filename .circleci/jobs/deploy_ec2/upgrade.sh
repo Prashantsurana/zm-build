@@ -52,7 +52,7 @@ echo Upgrade/Install
 echo -----------------------------------
 
 cd ~/WDIR/zcs-*/;
-sudo ./install.sh ~/WDIR/upgrade.conf.in
+sudo ./install.sh ~/BUILD/upgrade.conf.in
 
 echo -----------------------------------
 echo UPGRADE FINISHED
