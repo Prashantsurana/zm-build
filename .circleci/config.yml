@@ -67,6 +67,16 @@ references:
          - deploy:
             command: .circleci/jobs/${CIRCLE_JOB/@?*/}/deploy.sh
 
+   deploy_ec2_job_steps: &deploy_ec2_job_steps
+      steps:
+         - checkout
+            name: Preparing OS
+            command: .circleci/jobs/${CIRCLE_JOB/@?*/}/prepare-box.sh
+         - attach_workspace:
+            at: ../BUILDS
+         - deploy:
+            command: .circleci/jobs/${CIRCLE_JOB/@?*/}/upgrade.sh
+
 ############################################################################
 
 jobs:
@@ -127,7 +137,14 @@ jobs:
          - image: zimbra/zm-base-os:core-ubuntu
       <<: *deploy_s3_job_steps
 
-   deploy_ec2@app1:
+   deploy_ec2@app1_fresh_install:
+      working_directory: ~/zm-build
+      shell: /bin/bash -eo pipefail
+      docker:
+         - image: zimbra/zm-base-os:core-ubuntu
+      <<: *deploy_ec2_job_steps
+
+   deploy_ec2@app1_upgrade:
       working_directory: ~/zm-build
       shell: /bin/bash -eo pipefail
       docker:
@@ -156,10 +173,17 @@ workflows:
          - deploy_s3:
             requires:
                - deploy_s3_hold
-         - deploy_ec2@app1_hold:
+         - deploy_ec2@app1_install_hold:
             type: approval
             requires:
                - build_u16
-         - deploy_ec2@app1:
+         - deploy_ec2@app1_upgrade_hold:
+            type: approval
             requires:
-               - deploy_ec2@app1_hold
+               - build_u16
+         - deploy_ec2@app1_fresh_install:
+            requires:
+               - deploy_ec2@app1_install_hold
+         - deploy_ec2@app1_upgrade:
+            requires:
+               - deploy_ec2@app1_upgrade_hold

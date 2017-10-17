@@ -30,6 +30,7 @@ DIR=$(echo ../BUILDS/UBUNTU16_64* | head -1); [ -d "$DIR" ] || exit 1;
 
 #Rsync --delete -avz ~/zm-build "$APP1_SSH_USER@$APP1_SSH_HOST:"
 Rsync --delete -avz "$DIR/" "$APP1_SSH_USER@$APP1_SSH_HOST:BUILD/"
+Rsync .circleci/jobs/deploy_ec2/install.conf.in "$APP1_SSH_USER@$APP1_SSH_HOST:BUILD/install.conf.in"
 Rsync .circleci/jobs/deploy_ec2/upgrade.conf.in "$APP1_SSH_USER@$APP1_SSH_HOST:BUILD/upgrade.conf.in"
 
 Ssh "$APP1_SSH_USER@$APP1_SSH_HOST" -- "DOMAIN_NAME=$APP1_SSH_HOST" "ADMIN_PASS=$APP1_ADMIN_PASS" bash -s <<"SCRIPT_EOM"
@@ -86,7 +87,7 @@ sed -e "s/template_resolv/$RESOLVE/" \
     -e "s/template_hostname/$HOSTNAME/" \
     -e "s/template_domainname/$DOMAIN_NAME/" \
     -e "s/template_admin_pass/$ADMIN_PASS/g" \
- ~/BUILD/upgrade.conf.in > ~/WDIR/upgrade.conf
+ ~/BUILD/install.conf.in > ~/WDIR/install.conf
 
 echo -----------------------------------
 echo Setup local archives
@@ -109,7 +110,7 @@ echo Upgrade/Install
 echo -----------------------------------
 
 cd ~/WDIR/zcs-*/;
-sudo ./install.sh ~/WDIR/upgrade.conf
+sudo ./install.sh ~/WDIR/install.conf
 
 echo -----------------------------------
 echo Additional Settings
