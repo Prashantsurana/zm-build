@@ -67,7 +67,7 @@ references:
          - deploy:
             command: .circleci/jobs/${CIRCLE_JOB/@?*/}/deploy.sh
 
-   deploy_ec2_job_steps: &deploy_ec2_job_steps
+   deploy_ec2_upgrade_job_steps: &deploy_ec2_upgrade_job_steps
       steps:
          - checkout
             name: Preparing OS
@@ -149,7 +149,7 @@ jobs:
       shell: /bin/bash -eo pipefail
       docker:
          - image: zimbra/zm-base-os:core-ubuntu
-      <<: *deploy_ec2_job_steps
+      <<: *deploy_ec2_upgrade_job_steps
 
 ############################################################################
 
