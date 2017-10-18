@@ -76,7 +76,7 @@ references:
          - attach_workspace:
             at: ../BUILDS
          - deploy:
-            command: .circleci/jobs/${CIRCLE_JOB/@?*/}/upgrade.sh
+            command: .circleci/jobs/${CIRCLE_JOB/@?*/}/deploy.sh
 
 ############################################################################
 

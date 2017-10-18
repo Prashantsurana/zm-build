@@ -6,6 +6,7 @@ set -euo pipefail
 [ "$APP1_SSH_USER" ] || exit 1;
 [ "$APP1_SSH_HOST" ] || exit 1;
 [ "$APP1_ADMIN_PASS" ] || exit 1;
+[ "$CIRCLE_JOB" ] || exit 1;
 
 source .circleci/get-env.sh;
 
@@ -35,95 +36,126 @@ Rsync .circleci/jobs/deploy_ec2/upgrade.conf.in "$APP1_SSH_USER@$APP1_SSH_HOST:B
 
 Ssh "$APP1_SSH_USER@$APP1_SSH_HOST" -- "DOMAIN_NAME=$APP1_SSH_HOST" "ADMIN_PASS=$APP1_ADMIN_PASS" bash -s <<"SCRIPT_EOM"
 set -euxo pipefail
+echo $CIRCLE_JOB
+echo $CIRCLE_JOB | egrep -q "upgrade"
+if [ $? = 0 ]; then
+   buildCleanUp
+   prepareConfig
+   updatePackages
+   deploy "~/WDIR/upgrade.conf"
+else
+   setUp
+   buildCleanUp
+   prepareConfig
+   updatePackages
+   deploy "~/WDIR/install.conf"
+   postInstallConfiguration
+fi
 
-echo -----------------------------------
-echo System Setup specific to EC2
-echo -----------------------------------
 
-[ -f /etc/hosts.orig ] || sudo cp /etc/hosts /etc/hosts.orig
-[ -f /etc/resolv.conf.orig ] || sudo cp /etc/resolv.conf /etc/resolv.conf.orig
-EC2_IP=$(hostname      | sed -e 's/[.\s].*$//' -e 's/^ip-//' -e 's/[-]/./g')
-EC2_RESOLVE=$(hostname | sed -e 's/[.\s].*$//' -e 's/^ip-//' -e 's/[-]/./g' -e 's/[.][0-9]*[.][0-9]*$/.0.2/')
-sudo sed -i -e "\$a$EC2_IP $(hostname -f) $(hostname)" -e "/ip-/ { /$(hostname)/d; }" /etc/hosts
-sudo sed -i -e "/^search/i\\nameserver $EC2_RESOLVE\nnameserver 8.8.8.8" -e "/nameserver 8.8.8.8/d" -e "/nameserver $EC2_RESOLVE/d" /etc/resolv.conf
+setUp()
+{
+   echo -----------------------------------
+   echo System Setup specific to EC2
+   echo -----------------------------------
 
-echo -----------------------------------
-echo System Cleanup
-echo -----------------------------------
+   [ -f /etc/hosts.orig ] || sudo cp /etc/hosts /etc/hosts.orig
+   [ -f /etc/resolv.conf.orig ] || sudo cp /etc/resolv.conf /etc/resolv.conf.orig
+   EC2_IP=$(hostname      | sed -e 's/[.\s].*$//' -e 's/^ip-//' -e 's/[-]/./g')
+   EC2_RESOLVE=$(hostname | sed -e 's/[.\s].*$//' -e 's/^ip-//' -e 's/[-]/./g' -e 's/[.][0-9]*[.][0-9]*$/.0.2/')
+   sudo sed -i -e "\$a$EC2_IP $(hostname -f) $(hostname)" -e "/ip-/ { /$(hostname)/d; }" /etc/hosts
+   sudo sed -i -e "/^search/i\\nameserver $EC2_RESOLVE\nnameserver 8.8.8.8" -e "/nameserver 8.8.8.8/d" -e "/nameserver $EC2_RESOLVE/d" /etc/resolv.conf
 
-cleanUp() {
- set +e;
- sudo killall master zmstat-fd
- sudo killall -u zimbra
- sudo killall -u postfix
- sudo pkill -f 'amavi[s]'
- sleep 10
- sudo killall -9 master zmstat-fd
- sudo killall -9 -u zimbra
- sudo killall -9 -u postfix
- sudo pkill -9 -f 'amavi[s]'
- sleep 10
- sudo apt-get remove --purge -y zimbra-*
- sudo rm -rf /opt/zimbra
- echo
+   echo -----------------------------------
+   echo System Cleanup
+   echo -----------------------------------
+
+   set +e;
+   sudo killall master zmstat-fd
+   sudo killall -u zimbra
+   sudo killall -u postfix
+   sudo pkill -f 'amavi[s]'
+   sleep 10
+   sudo killall -9 master zmstat-fd
+   sudo killall -9 -u zimbra
+   sudo killall -9 -u postfix
+   sudo pkill -9 -f 'amavi[s]'
+   sleep 10
+   sudo apt-get remove --purge -y zimbra-*
+   sudo rm -rf /opt/zimbra
+   echo
 }
 
-cleanUp
+buildCleanUp()
+{
+   echo -----------------------------------
+   echo Build Cleanup
+   echo -----------------------------------
 
-echo -----------------------------------
-echo Build Cleanup
-echo -----------------------------------
+   sudo rm -rf ~/WDIR
+   mkdir ~/WDIR
+}
 
-sudo rm -rf ~/WDIR
-mkdir ~/WDIR
+prepareConfig()
+{
+   echo -----------------------------------
+   echo Create install configuration
+   echo -----------------------------------
 
-echo -----------------------------------
-echo Create upgrade configuration
-echo -----------------------------------
+   HOSTNAME="$(hostname --fqdn)"
+   RESOLVE="$(cat /etc/resolv.conf | awk '/^\s*nameserver/ { print $2; }' | grep -v ^127 | head -1)"
+   sed -e "s/template_resolv/$RESOLVE/" \
+       -e "s/template_hostname/$HOSTNAME/" \
+       -e "s/template_domainname/$DOMAIN_NAME/" \
+       -e "s/template_admin_pass/$ADMIN_PASS/g" \
+   ~/BUILD/install.conf.in > ~/WDIR/install.conf
+   ~/BUILD/upgrade.conf.in > ~/WDIR/upgrade.conf
+}
 
-HOSTNAME="$(hostname --fqdn)"
-RESOLVE="$(cat /etc/resolv.conf | awk '/^\s*nameserver/ { print $2; }' | grep -v ^127 | head -1)"
-sed -e "s/template_resolv/$RESOLVE/" \
-    -e "s/template_hostname/$HOSTNAME/" \
-    -e "s/template_domainname/$DOMAIN_NAME/" \
-    -e "s/template_admin_pass/$ADMIN_PASS/g" \
- ~/BUILD/install.conf.in > ~/WDIR/install.conf
+updatePackages()
+{
+   echo -----------------------------------
+   echo Setup local archives
+   echo -----------------------------------
 
-echo -----------------------------------
-echo Setup local archives
-echo -----------------------------------
+   for archives in $HOME/BUILD/archives/*
+   do
+      echo "deb [trusted=yes] file://$archives ./"
+   done | sudo tee /etc/apt/sources.list.d/zimbra-local.list
+   sudo apt-get update -qq
+}
 
-for archives in $HOME/BUILD/archives/*
-do
-   echo "deb [trusted=yes] file://$archives ./"
-done | sudo tee /etc/apt/sources.list.d/zimbra-local.list
-sudo apt-get update -qq
+deploy()
+{
+   echo -----------------------------------
+   echo Uncompress tarball
+   echo -----------------------------------
 
-echo -----------------------------------
-echo Uncompress tarball
-echo -----------------------------------
+   tar -C ~/WDIR -xzf BUILD/zcs-*.tgz
 
-tar -C ~/WDIR -xzf BUILD/zcs-*.tgz
+   echo -----------------------------------
+   echo Upgrade/Install
+   echo -----------------------------------
 
-echo -----------------------------------
-echo Upgrade/Install
-echo -----------------------------------
+   cd ~/WDIR/zcs-*/;
+   sudo ./install.sh "$@"
+}
 
-cd ~/WDIR/zcs-*/;
-sudo ./install.sh ~/WDIR/install.conf
+postInstallConfiguration()
+{
+   echo -----------------------------------
+   echo Additional Settings
+   echo -----------------------------------
 
-echo -----------------------------------
-echo Additional Settings
-echo -----------------------------------
+   sudo su - zimbra -c "zmprov -l md $DOMAIN_NAME zimbraVirtualHostname $DOMAIN_NAME"
+   sudo su - zimbra -c "zmprov -l mcf zimbraReverseProxyAdminEnabled TRUE"
+   sudo su - zimbra -c "zmproxyctl restart"
 
-sudo su - zimbra -c "zmprov -l md $DOMAIN_NAME zimbraVirtualHostname $DOMAIN_NAME"
-sudo su - zimbra -c "zmprov -l mcf zimbraReverseProxyAdminEnabled TRUE"
-sudo su - zimbra -c "zmproxyctl restart"
-
-sudo su - zimbra -c "zmprov -l mcf zimbraPublicServiceHostname $DOMAIN_NAME"
-sudo su - zimbra -c "zmprov -l mcf zimbraPublicServicePort 443"
-sudo su - zimbra -c "zmprov -l mcf zimbraPublicServiceProtocol https"
-sudo su - zimbra -c "zmmailboxdctl restart"
+   sudo su - zimbra -c "zmprov -l mcf zimbraPublicServiceHostname $DOMAIN_NAME"
+   sudo su - zimbra -c "zmprov -l mcf zimbraPublicServicePort 443"
+   sudo su - zimbra -c "zmprov -l mcf zimbraPublicServiceProtocol https"
+   sudo su - zimbra -c "zmmailboxdctl restart"
+}
 
 echo -----------------------------------
 echo INSTALL FINISHED
