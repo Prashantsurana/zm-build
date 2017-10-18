@@ -1,12 +1,11 @@
 #!/bin/bash
 
 set -euo pipefail
-
+OP="$1"
 [ -d .circleci ] || exit 1
 [ "$APP1_SSH_USER" ] || exit 1;
 [ "$APP1_SSH_HOST" ] || exit 1;
 [ "$APP1_ADMIN_PASS" ] || exit 1;
-[ "$CIRCLE_JOB" ] || exit 1;
 
 source .circleci/get-env.sh;
 
@@ -36,8 +35,8 @@ Rsync .circleci/jobs/deploy_ec2/upgrade.conf.in "$APP1_SSH_USER@$APP1_SSH_HOST:B
 
 Ssh "$APP1_SSH_USER@$APP1_SSH_HOST" -- "DOMAIN_NAME=$APP1_SSH_HOST" "ADMIN_PASS=$APP1_ADMIN_PASS" bash -s <<"SCRIPT_EOM"
 set -euxo pipefail
-echo $CIRCLE_JOB
-echo $CIRCLE_JOB | egrep -q "upgrade"
+echo $OP
+echo $OP | egrep -q "upgrade"
 if [ $? = 0 ]; then
    buildCleanUp
    prepareConfig

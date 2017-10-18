@@ -65,7 +65,7 @@ references:
          - attach_workspace:
             at: ../BUILDS
          - deploy:
-            command: .circleci/jobs/${CIRCLE_JOB/@?*/}/deploy.sh
+            command: .circleci/jobs/${CIRCLE_JOB/@?*/}/deploy.sh install
 
    deploy_ec2_upgrade_job_steps: &deploy_ec2_upgrade_job_steps
       steps:
@@ -76,7 +76,7 @@ references:
          - attach_workspace:
             at: ../BUILDS
          - deploy:
-            command: .circleci/jobs/${CIRCLE_JOB/@?*/}/deploy.sh
+            command: .circleci/jobs/${CIRCLE_JOB/@?*/}/deploy.sh upgrade
 
 ############################################################################
 
