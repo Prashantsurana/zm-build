@@ -121,7 +121,7 @@ deploy()
    echo -----------------------------------
 
    cd ~/WDIR/zcs-*/;
-   sudo ./install.sh "$@"
+   sudo ./install.sh $@
 }
 
 postInstallConfiguration()
@@ -146,13 +146,13 @@ Main() {
       buildCleanUp
       prepareConfig
       updatePackages
-      deploy "../upgrade.conf"
+      deploy "~/WDIR/upgrade.conf"
    else
       setUp
       buildCleanUp
       prepareConfig
       updatePackages
-      deploy "../install.conf"
+      deploy "~/WDIR/install.conf"
       postInstallConfiguration
    fi
 }

@@ -138,7 +138,7 @@ jobs:
          - image: zimbra/zm-base-os:core-ubuntu
       <<: *deploy_s3_job_steps
 
-   deploy_ec2@app1_fresh_install:
+   deploy_ec2@app1_install:
       working_directory: ~/zm-build
       shell: /bin/bash -eo pipefail
       docker:
@@ -182,7 +182,7 @@ workflows:
             type: approval
             requires:
                - build_u16
-         - deploy_ec2@app1_fresh_install:
+         - deploy_ec2@app1_install:
             requires:
                - app1_ec2_install
          - deploy_ec2@app1_upgrade:
