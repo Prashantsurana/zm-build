@@ -26,31 +26,6 @@ Ssh()
    ssh "${SSH_OPTS[@]}" "$@"
 }
 
-DIR=$(echo ../BUILDS/UBUNTU16_64* | head -1); [ -d "$DIR" ] || exit 1;
-
-#Rsync --delete -avz ~/zm-build "$APP1_SSH_USER@$APP1_SSH_HOST:"
-Rsync --delete -avz "$DIR/" "$APP1_SSH_USER@$APP1_SSH_HOST:BUILD/"
-Rsync .circleci/jobs/deploy_ec2/install.conf.in "$APP1_SSH_USER@$APP1_SSH_HOST:BUILD/install.conf.in"
-Rsync .circleci/jobs/deploy_ec2/upgrade.conf.in "$APP1_SSH_USER@$APP1_SSH_HOST:BUILD/upgrade.conf.in"
-
-Ssh "$APP1_SSH_USER@$APP1_SSH_HOST" -- "DOMAIN_NAME=$APP1_SSH_HOST" "ADMIN_PASS=$APP1_ADMIN_PASS" bash -s <<"SCRIPT_EOM"
-set -euxo pipefail
-echo $OP
-echo $OP | egrep -q "upgrade"
-if [ $? = 0 ]; then
-   buildCleanUp
-   prepareConfig
-   updatePackages
-   deploy "~/WDIR/upgrade.conf"
-else
-   setUp
-   buildCleanUp
-   prepareConfig
-   updatePackages
-   deploy "~/WDIR/install.conf"
-   postInstallConfiguration
-fi
-
 
 setUp()
 {
@@ -108,7 +83,7 @@ prepareConfig()
        -e "s/template_domainname/$DOMAIN_NAME/" \
        -e "s/template_admin_pass/$ADMIN_PASS/g" \
    ~/BUILD/install.conf.in > ~/WDIR/install.conf
-   ~/BUILD/upgrade.conf.in > ~/WDIR/upgrade.conf
+   cat ~/BUILD/upgrade.conf.in > ~/WDIR/upgrade.conf
 }
 
 updatePackages()
@@ -156,9 +131,36 @@ postInstallConfiguration()
    sudo su - zimbra -c "zmmailboxdctl restart"
 }
 
-echo -----------------------------------
-echo INSTALL FINISHED
-echo -----------------------------------
-SCRIPT_EOM
+Main() {
+   DIR=$(echo ../BUILDS/UBUNTU16_64* | head -1); [ -d "$DIR" ] || exit 1;
 
-echo DEPLOY FINISHED - https://$APP1_SSH_HOST/
+   #Rsync --delete -avz ~/zm-build "$APP1_SSH_USER@$APP1_SSH_HOST:"
+   Rsync --delete -avz "$DIR/" "$APP1_SSH_USER@$APP1_SSH_HOST:BUILD/"
+   Rsync .circleci/jobs/deploy_ec2/install.conf.in "$APP1_SSH_USER@$APP1_SSH_HOST:BUILD/install.conf.in"
+   Rsync .circleci/jobs/deploy_ec2/upgrade.conf.in "$APP1_SSH_USER@$APP1_SSH_HOST:BUILD/upgrade.conf.in"
+
+   Ssh "$APP1_SSH_USER@$APP1_SSH_HOST" -- "DOMAIN_NAME=$APP1_SSH_HOST" "ADMIN_PASS=$APP1_ADMIN_PASS" "OP=$OP" bash -s <<"SCRIPT_EOM"
+   set -euxo pipefail
+   echo $OP
+   echo $OP | egrep -q "upgrade"
+   if [ $? = 0 ]; then
+      buildCleanUp
+      prepareConfig
+      updatePackages
+      deploy "~/WDIR/upgrade.conf"
+   else
+      setUp
+      buildCleanUp
+      prepareConfig
+      updatePackages
+      deploy "~/WDIR/install.conf"
+      postInstallConfiguration
+   fi
+   echo -----------------------------------
+   echo INSTALL FINISHED
+   echo -----------------------------------
+   SCRIPT_EOM
+
+   echo DEPLOY FINISHED - https://$APP1_SSH_HOST/
+)
+Main
