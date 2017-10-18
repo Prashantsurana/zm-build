@@ -142,18 +142,17 @@ postInstallConfiguration()
 
 Main() {
    echo $OP
-   echo $OP | egrep -q "upgrade"
-   if [ $? = 0 ]; then
+   if [ "$OP" == "upgrade" ]; then
       buildCleanUp
       prepareConfig
       updatePackages
-      deploy "~/WDIR/upgrade.conf"
+      deploy "../upgrade.conf"
    else
       setUp
       buildCleanUp
       prepareConfig
       updatePackages
-      deploy "~/WDIR/install.conf"
+      deploy "../install.conf"
       postInstallConfiguration
    fi
 }
