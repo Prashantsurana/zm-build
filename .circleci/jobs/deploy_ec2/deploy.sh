@@ -146,7 +146,7 @@ Main() {
       buildCleanUp
       prepareConfig
       updatePackages
-      deploy ~/WDIR/upgrade.config
+      deploy ~/WDIR/upgrade.conf
    else
       setUp
       buildCleanUp
